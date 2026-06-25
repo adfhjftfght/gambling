@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackjack</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(160deg, #0a0a0f 0%, #12121a 50%, #0f0f14 100%);
+            color: #e8e8ec;
+            padding: 2rem 1.5rem;
+        }
+        .wrap { max-width: 720px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle { text-align: center; margin-top: 0.5rem; color: #71717a; font-size: 0.95rem; }
+        .panel {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+        }
+        .user-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .user-bar.hidden { display: none; }
+        .balance { font-size: 1.1rem; font-weight: 600; color: #a5b4fc; }
+        .bet-tag {
+            font-size: 0.85rem;
+            color: #71717a;
+            padding: 0.35rem 0.75rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 999px;
+        }
+        .btn {
+            padding: 0.75rem 1.25rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: #fff;
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.2s ease;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .btn.secondary {
+            background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .btn.danger { background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%); }
+        .actions { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 1rem; }
+        .hand-section { margin-top: 1.25rem; }
+        .hand-label { font-size: 0.85rem; color: #71717a; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .hand-label span { color: #f4f4f5; font-weight: 600; }
+        .cards { display: flex; flex-wrap: wrap; gap: 0.65rem; min-height: 96px; }
+        .card {
+            width: 64px;
+            height: 92px;
+            border-radius: 10px;
+            background: #fff;
+            color: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+        }
+        .card.red { color: #dc2626; }
+        .card.hidden-card {
+            background: linear-gradient(135deg, #312e81, #4f46e5);
+            color: transparent;
+        }
+        .card-rank { font-size: 1.2rem; line-height: 1; }
+        .card-suit { font-size: 1.4rem; line-height: 1; margin-top: 0.15rem; }
+        #message {
+            margin-top: 1rem;
+            text-align: center;
+            min-height: 1.4rem;
+            font-weight: 600;
+            color: #f4f4f5;
+        }
+        #status {
+            margin-top: 0.75rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #ef4444;
+            min-height: 1.2rem;
+        }
+        #sign-in-menu {
+            position: fixed; inset: 0;
+            display: none; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.85); z-index: 20; padding: 1.5rem;
+        }
+        #sign-in-menu.open { display: flex; }
+        .menu-panel {
+            width: 100%; max-width: 360px;
+            background: linear-gradient(160deg, #12121a 0%, #0f0f14 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 1.5rem;
+        }
+        .menu-panel h2 { font-size: 1.25rem; margin-bottom: 0.35rem; }
+        .menu-panel p { color: #71717a; font-size: 0.9rem; margin-bottom: 1rem; }
+        .user-list { display: flex; flex-direction: column; gap: 0.65rem; list-style: none; }
+        .user-list button {
+            width: 100%; text-align: left;
+            padding: 0.85rem 1.15rem; font-size: 1rem; font-weight: 600;
+            font-family: inherit; color: #f4f4f5;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; cursor: pointer;
+        }
+        .user-list button:hover {
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(165,180,252,0.35);
+        }
+        .menu-close {
+            margin-top: 1rem; width: 100%; padding: 0.65rem;
+            font-family: inherit; font-size: 0.9rem; color: #71717a;
+            background: transparent; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; cursor: pointer;
+        }
+        .signed-out { text-align: center; padding: 2rem 1rem; color: #71717a; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Blackjack</h1>
+        <p class="subtitle">$500 per hand · play against the bot</p>
+
+        <div class="panel">
+            <div id="signed-out" class="signed-out">
+                <p>Sign in to play</p>
+                <div class="actions" style="justify-content:center;margin-top:1rem;">
+                    <button type="button" class="btn" id="sign-in-btn">Sign in</button>
+                </div>
+            </div>
+
+            <div id="user-bar" class="user-bar hidden">
+                <div>
+                    <div>Signed in as <strong id="signed-in-name"></strong></div>
+                    <div class="balance">Balance: <span id="user-balance">—</span></div>
+                </div>
+                <span class="bet-tag">Bet: $500</span>
+                <button type="button" class="btn secondary" id="switch-btn">Switch account</button>
+            </div>
+
+            <div id="game-area" class="hidden">
+                <div class="hand-section">
+                    <div class="hand-label">Dealer · <span id="dealer-total">?</span></div>
+                    <div class="cards" id="dealer-cards"></div>
+                </div>
+                <div class="hand-section">
+                    <div class="hand-label">You · <span id="player-total">0</span></div>
+                    <div class="cards" id="player-cards"></div>
+                </div>
+                <p id="message"></p>
+                <div class="actions">
+                    <button type="button" class="btn" id="deal-btn">Deal ($500)</button>
+                    <button type="button" class="btn" id="hit-btn" disabled>Hit</button>
+                    <button type="button" class="btn secondary" id="stand-btn" disabled>Stand</button>
+                </div>
+            </div>
+            <p id="status"></p>
+        </div>
+    </div>
+
+    <div id="sign-in-menu" aria-hidden="true">
+        <div class="menu-panel">
+            <h2>Sign in</h2>
+            <p>Choose your account</p>
+            <ul class="user-list" id="user-list"></ul>
+            <button type="button" class="menu-close" id="menu-close">Cancel</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+    <script>
+        const BET = 500;
+        const USERS = ["hok yu", "miles", "rex", "caden", "franklin", "hugo", "asten", "chtim", "tested gambler"];
+        const USER_COLUMNS = {
+            "hok yu": "hokyu",
+            miles: "miles",
+            rex: "rex",
+            caden: "caden",
+            franklin: "franklin",
+            hugo: "hugo",
+            asten: "astin",
+            chtim: "chtim",
+            "tested gambler": "tested_gambler"
+        };
+        const STORAGE_KEY = "blackjackSignedInUser";
+
+        const SUPABASE_URL = "https://jxfmyrgurzoztuxsbyqb.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4Zm15cmd1cnpvenR1eHNieXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNDQ5MTMsImV4cCI6MjA5NzcyMDkxM30.GG9Y32NNqNsfEXEah7h2xtVTIgvsJoyi6lWr1WVgvO8";
+
+        const SUITS = [
+            { symbol: "♠", red: false },
+            { symbol: "♥", red: true },
+            { symbol: "♦", red: true },
+            { symbol: "♣", red: false }
+        ];
+        const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+        let db = null;
+        let currentUser = null;
+        let playerRowId = null;
+        let currentBalance = 0;
+        let deck = [];
+        let playerHand = [];
+        let dealerHand = [];
+        let gameActive = false;
+        let dealerHidden = true;
+        let settling = false;
+
+        const els = {
+            signInMenu: document.getElementById("sign-in-menu"),
+            signInBtn: document.getElementById("sign-in-btn"),
+            switchBtn: document.getElementById("switch-btn"),
+            menuClose: document.getElementById("menu-close"),
+            userList: document.getElementById("user-list"),
+            signedOut: document.getElementById("signed-out"),
+            userBar: document.getElementById("user-bar"),
+            gameArea: document.getElementById("game-area"),
+            signedInName: document.getElementById("signed-in-name"),
+            userBalance: document.getElementById("user-balance"),
+            dealerCards: document.getElementById("dealer-cards"),
+            playerCards: document.getElementById("player-cards"),
+            dealerTotal: document.getElementById("dealer-total"),
+            playerTotal: document.getElementById("player-total"),
+            message: document.getElementById("message"),
+            status: document.getElementById("status"),
+            dealBtn: document.getElementById("deal-btn"),
+            hitBtn: document.getElementById("hit-btn"),
+            standBtn: document.getElementById("stand-btn")
+        };
+
+        function openSignInMenu() {
+            els.signInMenu.classList.add("open");
+            els.signInMenu.setAttribute("aria-hidden", "false");
+        }
+
+        function closeSignInMenu() {
+            els.signInMenu.classList.remove("open");
+            els.signInMenu.setAttribute("aria-hidden", "true");
+        }
+
+        function setStatus(msg, isError = true) {
+            els.status.textContent = msg || "";
+            els.status.style.color = isError ? "#ef4444" : "#71717a";
+        }
+
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function createDeck() {
+            const cards = [];
+            for (const suit of SUITS) {
+                for (const rank of RANKS) {
+                    cards.push({ rank, suit: suit.symbol, red: suit.red });
+                }
+            }
+            return shuffle(cards);
+        }
+
+        function handValue(hand) {
+            let total = 0;
+            let aces = 0;
+            for (const card of hand) {
+                if (card.rank === "A") { total += 11; aces++; }
+                else if (["J", "Q", "K"].includes(card.rank)) total += 10;
+                else total += parseInt(card.rank, 10);
+            }
+            while (total > 21 && aces > 0) { total -= 10; aces--; }
+            return total;
+        }
+
+        function drawCard() {
+            if (deck.length < 15) deck = createDeck();
+            return deck.pop();
+        }
+
+        function renderCard(card, hidden = false) {
+            const el = document.createElement("div");
+            el.className = "card" + (hidden ? " hidden-card" : card.red ? " red" : "");
+            if (!hidden) {
+                el.innerHTML = `<div class="card-rank">${card.rank}</div><div class="card-suit">${card.suit}</div>`;
+            }
+            return el;
+        }
+
+        function renderHands() {
+            els.dealerCards.innerHTML = "";
+            els.playerCards.innerHTML = "";
+
+            dealerHand.forEach((card, i) => {
+                const hide = dealerHidden && i === 1;
+                els.dealerCards.appendChild(renderCard(card, hide));
+            });
+
+            playerHand.forEach((card) => {
+                els.playerCards.appendChild(renderCard(card));
+            });
+
+            els.playerTotal.textContent = handValue(playerHand);
+            if (dealerHidden) {
+                els.dealerTotal.textContent = handValue([dealerHand[0]]) + " + ?";
+            } else {
+                els.dealerTotal.textContent = handValue(dealerHand);
+            }
+        }
+
+        function setControls({ deal, hit, stand }) {
+            els.dealBtn.disabled = !deal;
+            els.hitBtn.disabled = !hit;
+            els.standBtn.disabled = !stand;
+        }
+
+        function updateBalanceDisplay() {
+            els.userBalance.textContent = currentBalance + "$";
+            els.dealBtn.disabled = gameActive || settling || currentBalance < BET;
+        }
+
+        async function fetchPlayerRow(username) {
+            if (!db) throw new Error("Database not connected");
+
+            const column = USER_COLUMNS[username];
+            const { data, error } = await db
+                .from("players")
+                .select("id, " + column)
+                .limit(1);
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                throw new Error("No player data found. Check Supabase RLS and add a row.");
+            }
+
+            return data[0];
+        }
+
+        async function loadUser(username) {
+            currentUser = username;
+            localStorage.setItem(STORAGE_KEY, username);
+            closeSignInMenu();
+            setStatus("");
+
+            const column = USER_COLUMNS[username];
+            const row = await fetchPlayerRow(username);
+            playerRowId = row.id;
+
+            const value = row[column];
+            if (value === null || value === undefined) {
+                throw new Error("Balance not found for " + username);
+            }
+
+            currentBalance = Number(value);
+            els.signedInName.textContent = username;
+            els.userBalance.textContent = currentBalance + "$";
+            els.signedOut.classList.add("hidden");
+            els.userBar.classList.remove("hidden");
+            els.gameArea.classList.remove("hidden");
+            updateBalanceDisplay();
+        }
+
+        async function saveResult(outcome, balanceBefore, balanceAfter) {
+            const column = USER_COLUMNS[currentUser];
+            const change = balanceAfter - balanceBefore;
+
+            const { error: updateError } = await db
+                .from("players")
+                .update({ [column]: balanceAfter })
+                .eq("id", playerRowId);
+
+            if (updateError) throw updateError;
+
+            const { error: logError } = await db.from("blackjack_results").insert({
+                player: currentUser,
+                player_column: column,
+                outcome,
+                bet: BET,
+                balance_change: change,
+                balance_before: balanceBefore,
+                balance_after: balanceAfter
+            });
+
+            if (logError) {
+                console.warn("Could not log to blackjack_results:", logError.message);
+            }
+        }
+
+        async function settle(outcome, message) {
+            if (settling) return;
+            settling = true;
+            gameActive = false;
+            dealerHidden = false;
+            renderHands();
+            els.message.textContent = message;
+            setControls({ deal: false, hit: false, stand: false });
+
+            const balanceBefore = currentBalance;
+            let balanceAfter = balanceBefore;
+
+            if (outcome === "win") balanceAfter += BET;
+            else if (outcome === "lose") balanceAfter -= BET;
+
+            try {
+                await saveResult(outcome, balanceBefore, balanceAfter);
+                currentBalance = balanceAfter;
+                updateBalanceDisplay();
+                setStatus("", false);
+            } catch (err) {
+                console.error(err);
+                setStatus("Could not save result: " + err.message);
+            }
+
+            settling = false;
+            setControls({ deal: currentBalance >= BET, hit: false, stand: false });
+        }
+
+        function dealerTurn() {
+            dealerHidden = false;
+            while (handValue(dealerHand) < 17) {
+                dealerHand.push(drawCard());
+            }
+            renderHands();
+
+            const playerTotal = handValue(playerHand);
+            const dealerTotal = handValue(dealerHand);
+
+            if (dealerTotal > 21) {
+                settle("win", "Dealer busts! You win $500.");
+            } else if (playerTotal > dealerTotal) {
+                settle("win", "You win $500!");
+            } else if (playerTotal < dealerTotal) {
+                settle("lose", "Dealer wins. You lose $500.");
+            } else {
+                settle("push", "Push — no change to your balance.");
+            }
+        }
+
+        function startHand() {
+            if (gameActive || settling || currentBalance < BET) return;
+
+            setStatus("");
+            els.message.textContent = "";
+            deck = createDeck();
+            playerHand = [drawCard(), drawCard()];
+            dealerHand = [drawCard(), drawCard()];
+            gameActive = true;
+            dealerHidden = true;
+            renderHands();
+            setControls({ deal: false, hit: true, stand: true });
+
+            if (handValue(playerHand) === 21) {
+                dealerHidden = false;
+                renderHands();
+                if (handValue(dealerHand) === 21) {
+                    settle("push", "Both have blackjack — push.");
+                } else {
+                    settle("win", "Blackjack! You win $500.");
+                }
+            }
+        }
+
+        function hit() {
+            if (!gameActive || settling) return;
+            playerHand.push(drawCard());
+            renderHands();
+
+            const total = handValue(playerHand);
+            if (total > 21) {
+                dealerHidden = false;
+                renderHands();
+                settle("lose", "Bust! You lose $500.");
+            } else if (total === 21) {
+                dealerTurn();
+            }
+        }
+
+        function stand() {
+            if (!gameActive || settling) return;
+            dealerTurn();
+        }
+
+        USERS.forEach((username) => {
+            const li = document.createElement("li");
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = username;
+            btn.addEventListener("click", async () => {
+                try {
+                    await loadUser(username);
+                } catch (err) {
+                    setStatus(err.message);
+                }
+            });
+            li.appendChild(btn);
+            els.userList.appendChild(li);
+        });
+
+        els.signInBtn.addEventListener("click", openSignInMenu);
+        els.switchBtn.addEventListener("click", openSignInMenu);
+        els.menuClose.addEventListener("click", closeSignInMenu);
+        els.signInMenu.addEventListener("click", (e) => {
+            if (e.target === els.signInMenu) closeSignInMenu();
+        });
+        els.dealBtn.addEventListener("click", startHand);
+        els.hitBtn.addEventListener("click", hit);
+        els.standBtn.addEventListener("click", stand);
+
+        if (window.supabase) {
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved && USERS.includes(saved)) {
+                loadUser(saved).catch((err) => setStatus(err.message));
+            }
+        } else {
+            setStatus("Could not load Supabase library.");
+        }
+    </script>
+</body>
+</html>
